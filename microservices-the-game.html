@@ -1,0 +1,237 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Microservices: The Game</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      background: linear-gradient(to bottom, #1e1e2f, #151521);
+      color: white;
+      font-family: "Segoe UI", sans-serif;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+    h1 {
+      font-size: 2.5rem;
+      margin: 20px;
+      text-shadow: 2px 2px 4px #000;
+    }
+    #scoreboard {
+      text-align: center;
+      font-size: 1.2rem;
+      padding: 10px;
+      background: rgba(0, 0, 0, 0.2);
+      border-radius: 8px;
+      margin-bottom: 10px;
+    }
+    canvas {
+      border: 3px solid #61dafb;
+      border-radius: 10px;
+      background: #282c34;
+    }
+  </style>
+</head>
+<body>
+  <h1>💻 Microservices: The Game</h1>
+  <div id="scoreboard">
+    Score: <span id="score">0</span> |
+    Lives: <span id="lives">3</span> |
+    Bugs in Production: <span id="escaped">0</span>
+  </div>
+  <canvas id="game" width="800" height="600"></canvas>
+  <script>
+    // Insert full working game logic from the user-provided version with corrected stack and 'killed by tech debt' message
+
+    const canvas = document.getElementById("game");
+    const ctx = canvas.getContext("2d");
+    const scoreEl = document.getElementById("score");
+    const livesEl = document.getElementById("lives");
+    const escapedEl = document.getElementById("escaped");
+
+    const dev = {
+      x: canvas.width / 2 - 25,
+      y: canvas.height - 80,
+      width: 50,
+      height: 50,
+      emoji: "👨‍💻",
+      lives: 3
+    };
+
+    let lambdas = [];
+    let bugs = [];
+    let lambdaStack = [];
+    let effects = [];
+    let score = 0;
+    let gameOver = false;
+    let escapedBugs = 0;
+
+    const keys = {};
+    document.addEventListener("keydown", (e) => keys[e.key] = true);
+    document.addEventListener("keyup", (e) => keys[e.key] = false);
+
+    function drawDev() {
+      ctx.font = "32px serif";
+      ctx.textAlign = "center";
+      ctx.fillText(dev.emoji, dev.x + dev.width / 2, dev.y + dev.height);
+    }
+
+    function drawLambda(lambda) {
+      ctx.fillStyle = "#61dafb";
+      ctx.font = "36px monospace";
+      ctx.textAlign = "left";
+      ctx.fillText("λ", lambda.x, lambda.y);
+    }
+
+    function drawBug(bug) {
+      ctx.font = "28px serif";
+      ctx.textAlign = "center";
+      ctx.fillText("🐛", bug.x, bug.y);
+    }
+
+    function drawEffect(effect) {
+      ctx.font = "32px serif";
+      ctx.textAlign = "center";
+      ctx.fillText(effect.char, effect.x, effect.y);
+    }
+
+    function drawGameOver(reason = "The app has been decommissioned!") {
+      ctx.fillStyle = "white";
+      ctx.font = "48px sans-serif";
+      ctx.textAlign = "center";
+      ctx.fillText(reason, canvas.width / 2, canvas.height / 2);
+    }
+
+    function spawnBug() {
+      if (Math.random() < 0.03) {
+        bugs.push({ x: Math.random() * (canvas.width - 30) + 15, y: 0 });
+      }
+    }
+
+    function updateLambdas() {
+      let remaining = [];
+      lambdas.forEach(l => {
+        l.y -= 8;
+
+        const hitDev =
+          l.x >= dev.x && l.x <= dev.x + dev.width &&
+          l.y >= dev.y && l.y <= dev.y + dev.height;
+
+        if (hitDev) {
+          dev.lives -= 1;
+          livesEl.textContent = dev.lives;
+          effects.push({ x: dev.x + dev.width / 2, y: dev.y, char: "💥", timer: 20 });
+          if (dev.lives <= 0) {
+            gameOver = true;
+            drawGameOver("killed by tech debt!");
+          }
+          return;
+        }
+
+        let shouldStack = false;
+        let maxY = 0;
+        lambdaStack.forEach(s => {
+          const aligned = Math.abs(s.x - l.x) < 10;
+          if (aligned && s.y >= maxY) maxY = s.y;
+          if (aligned && Math.abs(l.y - s.y) <= 36) shouldStack = true;
+        });
+
+        if (l.y <= 0 || shouldStack) {
+          const newY = maxY + 36;
+          if (newY >= dev.y) {
+            gameOver = true;
+            drawGameOver("killed by tech debt!");
+            return;
+          }
+          lambdaStack.push({ x: l.x, y: newY });
+        } else {
+          remaining.push(l);
+        }
+      });
+      lambdas = remaining;
+
+      lambdaStack.forEach(drawLambda);
+      lambdas.forEach(drawLambda);
+    }
+
+    function updateBugs() {
+      let remaining = [];
+      bugs.forEach((b, i) => {
+        b.y += 2;
+        drawBug(b);
+
+        const hitDev =
+          b.x >= dev.x && b.x <= dev.x + dev.width &&
+          b.y >= dev.y && b.y <= dev.y + dev.height;
+
+        if (hitDev) {
+          dev.lives -= 1;
+          livesEl.textContent = dev.lives;
+          effects.push({ x: b.x, y: b.y, char: "💥", timer: 20 });
+          if (dev.lives <= 0) {
+            gameOver = true;
+            drawGameOver();
+          }
+        } else if (b.y > canvas.height) {
+          escapedBugs++;
+          escapedEl.textContent = escapedBugs;
+          if (escapedBugs >= 30) {
+            gameOver = true;
+            drawGameOver("Too many bugs escaped!");
+          }
+        } else {
+          remaining.push(b);
+        }
+      });
+      bugs = remaining;
+    }
+
+    function checkCollisions() {
+      lambdas.forEach((lambda, li) => {
+        bugs.forEach((bug, bi) => {
+          if (Math.abs(lambda.x - bug.x) < 20 && Math.abs(lambda.y - bug.y) < 20) {
+            lambdas.splice(li, 1);
+            bugs.splice(bi, 1);
+            score += 1;
+            scoreEl.textContent = score;
+            effects.push({ x: bug.x, y: bug.y, char: "💥", timer: 20 });
+          }
+        });
+      });
+    }
+
+    function updateEffects() {
+      effects = effects.filter(e => e.timer-- > 0);
+      effects.forEach(drawEffect);
+    }
+
+    function updateGame() {
+      if (gameOver) return;
+
+      if (keys["ArrowLeft"]) dev.x = Math.max(0, dev.x - 10);
+      if (keys["ArrowRight"]) dev.x = Math.min(canvas.width - dev.width, dev.x + 10);
+      if (keys[" "]) {
+        if (!keys.lastShot || Date.now() - keys.lastShot > 150) {
+          lambdas.push({ x: dev.x + 20, y: dev.y - 10 });
+          keys.lastShot = Date.now();
+        }
+      }
+
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      drawDev();
+      spawnBug();
+      updateLambdas();
+      updateBugs();
+      updateEffects();
+      checkCollisions();
+
+      requestAnimationFrame(updateGame);
+    }
+
+    updateGame();
+  </script>
+</body>
+</html>
