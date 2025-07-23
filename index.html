@@ -33,6 +33,12 @@
       border-radius: 10px;
       background: #282c34;
     }
+    #rank {
+      margin-top: 20px;
+      font-size: 1.5rem;
+      color: #ffd700;
+      text-shadow: 1px 1px 2px #000;
+    }
   </style>
 </head>
 <body>
@@ -48,14 +54,14 @@
       📂 View on GitHub
     </a>
   </div>
+  <div id="rank"></div>
   <script>
-    // Insert full working game logic from the user-provided version with corrected stack and 'killed by tech debt' message
-
     const canvas = document.getElementById("game");
     const ctx = canvas.getContext("2d");
     const scoreEl = document.getElementById("score");
     const livesEl = document.getElementById("lives");
     const escapedEl = document.getElementById("escaped");
+    const rankEl = document.getElementById("rank");
 
     const dev = {
       x: canvas.width / 2 - 25,
@@ -103,11 +109,21 @@
       ctx.fillText(effect.char, effect.x, effect.y);
     }
 
+    function showRank() {
+      let rank = "";
+      if (score >= 100) rank = "👑 Tech Lead";
+      else if (score >= 50) rank = "💼 Senior Developer";
+      else if (score >= 30) rank = "🛠️ Mid-level Developer";
+      else rank = "👶 Junior Developer";
+      rankEl.textContent = `Rank Achieved: ${rank}`;
+    }
+
     function drawGameOver(reason = "The app has been decommissioned!") {
       ctx.fillStyle = "white";
       ctx.font = "48px sans-serif";
       ctx.textAlign = "center";
       ctx.fillText(reason, canvas.width / 2, canvas.height / 2);
+      showRank();
     }
 
     function spawnBug() {
